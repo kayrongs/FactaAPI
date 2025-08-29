@@ -367,4 +367,4 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
 
 if __name__ == "__main__":
     CODIGO_AF, TWO_CAPTCHA_API_KEY, USUARIO, SENHA, REPETIR, VEZES = _load_runtime_config()
-    main(headless=False, usuario=USUARIO, senha=SENHA)
+    main(headless=True, usuario=USUARIO, senha=SENHA)
