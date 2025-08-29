@@ -17,7 +17,6 @@ from playwright.sync_api import (
 URL_LOGIN = "https://desenv.facta.com.br/sistemaNovo/login.php"
 URL_ANDAMENTO = "https://desenv.facta.com.br/sistemaNovo/andamentoPropostas.php"
 
-# Variáveis globais preenchidas em tempo de execução (args/env/prompt)
 USUARIO = os.getenv("USUARIO", "")
 SENHA = os.getenv("SENHA", "")
 CODIGO_AF = os.getenv("CODIGO_AF", "")
