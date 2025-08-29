@@ -14,7 +14,6 @@ class RunPayload(BaseModel):
     SENHA: str = Field(..., description="Senha")
     REPETIR: Optional[int] = Field(default=1, description="1 para repetir, 2 para não")
     VEZES: Optional[int] = Field(default=1, description="Quantidade de repetições se REPETIR=1")
-    HEADLESS: Optional[bool] = Field(default=True, description="Executar navegador em modo headless")
 
 
 app = FastAPI(title="Runner API", version="1.0.0")
