@@ -121,7 +121,7 @@ def _poll_result_2captcha(api_key: str, task_id: int, timeout_sec: int = 180, fi
         resp.raise_for_status()
         data = resp.json()
         if data.get("errorId"):
-            raise RuntimeError(f"2Captcha getTaskResult falhou: {data.get('errorCode']} - {data.get('errorDescription')}")
+            raise RuntimeError(f"2Captcha getTaskResult falhou: {data.get('errorCode')} - {data.get('errorDescription')}")
         if data.get("status") == "ready":
             sol = data.get("solution") or {}
             token = sol.get("gRecaptchaResponse") or sol.get("token")
