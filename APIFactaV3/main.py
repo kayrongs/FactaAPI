@@ -4,8 +4,6 @@ import argparse
 from getpass import getpass
 import os
 import time
-import json
-import re
 import requests
 from urllib.parse import urlparse, parse_qs
 from playwright.sync_api import (
@@ -21,6 +19,9 @@ USUARIO = os.getenv("USUARIO", "")
 SENHA = os.getenv("SENHA", "")
 CODIGO_AF = os.getenv("CODIGO_AF", "")
 TWO_CAPTCHA_API_KEY = os.getenv("TWO_CAPTCHA_API_KEY", "")
+REPETIR = os.getenv("REPETIR", "")
+VEZES = os.getenv("VEZES", "")
+
 
 def _is_enterprise(page) -> bool:
     try:
@@ -49,6 +50,7 @@ def _extract_sitekey(page) -> str:
     }""")
     if sitekey:
         return sitekey
+
     try:
         for f in page.frames:
             try:
@@ -61,6 +63,7 @@ def _extract_sitekey(page) -> str:
                 continue
     except Exception:
         pass
+
     try:
         sitekeys = page.evaluate("""() => {
             const out = [];
@@ -86,6 +89,7 @@ def _extract_sitekey(page) -> str:
             return sitekeys[0]
     except Exception:
         pass
+
     raise RuntimeError("Não foi possível detectar o sitekey do reCAPTCHA na página.")
 
 def _create_task_2captcha(api_key: str, website_url: str, sitekey: str, is_enterprise: bool, is_invisible: bool, user_agent: str = None) -> int:
@@ -201,7 +205,6 @@ def solve_recaptcha_v2_with_2captcha(page) -> None:
     )
 
 def safe_goto(page, url: str, attempts: int = 3):
-    last_err = None
     for i in range(attempts):
         try:
             page.goto(url, wait_until="load", timeout=45000)
@@ -211,15 +214,20 @@ def safe_goto(page, url: str, attempts: int = 3):
             msg = str(e)
             if "net::ERR_ABORTED" in msg and i < attempts - 1:
                 page.wait_for_timeout(250)
-                last_err = e
                 continue
             raise
+
+def _to_int(x, default=0):
+    try:
+        return int(str(x).strip())
+    except Exception:
+        return default
 
 def _load_runtime_config():
     """
     Prioridade:
-    1) CLI args  (--codigo-af / --captcha-key / --usuario / --senha)
-    2) Variáveis de ambiente (CODIGO_AF / TWO_CAPTCHA_API_KEY / USUARIO / SENHA)
+    1) CLI args  (--codigo-af / --captcha-key / --usuario / --senha / --repetir / --vezes)
+    2) Variáveis de ambiente (CODIGO_AF / TWO_CAPTCHA_API_KEY / USUARIO / SENHA / REPETIR / VEZES)
     3) Prompt (fallback com input / getpass)
     """
     parser = argparse.ArgumentParser(description="APIFacta V2")
@@ -227,12 +235,16 @@ def _load_runtime_config():
     parser.add_argument("-k", "--captcha-key", dest="captcha_key", help="2Captcha API key")
     parser.add_argument("-u", "--usuario", dest="usuario", help="Usuário de login (e-mail)")
     parser.add_argument("-p", "--senha", dest="senha", help="Senha de login")
+    parser.add_argument("-r", "--repetir", dest="repetir", help="Vai repetir (1=sim, 2=nao)")
+    parser.add_argument("-v", "--vezes", dest="vezes", help="Quantas vezes vai repetir (int)")
     args = parser.parse_args()
 
     codigo_af = (args.codigo_af or os.getenv("CODIGO_AF") or "").strip()
     captcha_key = (args.captcha_key or os.getenv("TWO_CAPTCHA_API_KEY") or "").strip().strip('"').strip("'")
     usuario = (args.usuario or os.getenv("USUARIO") or "").strip()
     senha = (args.senha or os.getenv("SENHA") or "").strip()
+    repetir = (args.repetir or os.getenv("REPETIR") or "").strip()
+    vezes = (args.vezes or os.getenv("VEZES") or "").strip()
 
     if not codigo_af:
         codigo_af = input("Informe CODIGO_AF: ").strip()
@@ -242,13 +254,17 @@ def _load_runtime_config():
         usuario = input("Informe USUÁRIO (login/e-mail): ").strip()
     if not senha:
         senha = getpass("Informe SENHA: ").strip()
+    if not repetir:
+        repetir = input("Repetir? (1=sim, 2=nao): ").strip()
+    if not vezes:
+        vezes = input("Quantas vezes vai repetir (int): ").strip()
 
     if not codigo_af:
         raise RuntimeError("CODIGO_AF não informado.")
     if len(captcha_key) < 20:
         print("[AVISO] Captcha key com tamanho inesperado.")
 
-    return codigo_af, captcha_key, usuario, senha
+    return codigo_af, captcha_key, usuario, senha, _to_int(repetir, 0), _to_int(vezes, 0)
 
 def main(headless: bool = False, usuario: str = "", senha: str = ""):
     with sync_playwright() as pw:
@@ -264,12 +280,11 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
         user_box.fill(usuario)
         page.get_by_role("textbox", name="senha").fill(senha)
         page.get_by_role("button", name="Entrar").click()
-
         page.wait_for_load_state("networkidle", timeout=30000)
 
         CONDICAO = 1
-        while CONDICAO == 1:
-
+        i = 0
+        while CONDICAO == 1 and REPETIR == 1 and i < VEZES:
             safe_goto(page, URL_ANDAMENTO)
 
             af_box = page.locator("#codigoAf")
@@ -287,10 +302,6 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
             btn_hist.wait_for(state="visible", timeout=15000)
             btn_hist.click()
 
-            try:
-                page.wait_for_selector("[data-sitekey], iframe[src*='recaptcha']", timeout=15000)
-            except PlaywrightTimeoutError:
-                pass
             solve_recaptcha_v2_with_2captcha(page)
 
             btn_averbar = page.get_by_role("button", name="Averbar")
@@ -334,6 +345,7 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
                 dialog.wait_for(state="hidden", timeout=15000)
                 print(f"[ATENÇÃO] Mensagem condicao 1 (temporário): {RESPOSTA}")
                 CONDICAO = 1
+                i += 1
                 continue
 
             elif any(k in txt for k in bloqueio_3_keys):
@@ -354,5 +366,5 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
         browser.close()
 
 if __name__ == "__main__":
-    CODIGO_AF, TWO_CAPTCHA_API_KEY, USUARIO, SENHA = _load_runtime_config()
+    CODIGO_AF, TWO_CAPTCHA_API_KEY, USUARIO, SENHA, REPETIR, VEZES = _load_runtime_config()
     main(headless=False, usuario=USUARIO, senha=SENHA)
