@@ -1,15 +1,12 @@
 @echo off
 setlocal EnableExtensions
 
-:: Diretório do script
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%"
 
-:: Usa o Python do venv se existir; senão, cai no python do sistema
 set "PYEXE=%SCRIPT_DIR%.venv311\Scripts\python.exe"
 if not exist "%PYEXE%" set "PYEXE=python"
 
-:: Parâmetros ou prompts
 set "CODIGO_AF=%~1"
 set "TWO_CAPTCHA_API_KEY=%~2"
 set "USUARIO=%~3"
@@ -28,14 +25,11 @@ if "%SENHA%"=="" (
   echo.
 )
 
-:: Garante os browsers do Playwright para ESTE Python/venv
 "%PYEXE%" -m playwright install chromium >nul 2>&1
 
-:: Diagnóstico curto (sem heredoc)
 "%PYEXE%" -c "import sys; print('PYTHON =', sys.executable)"
 "%PYEXE%" -c "import importlib.util; m=importlib.util.find_spec('playwright'); print('PLAYWRIGHT =', getattr(m,'origin',None) or 'not installed')"
 
-:: Executa seu script
 "%PYEXE%" "%SCRIPT_DIR%main.py" -c "%CODIGO_AF%" -k "%TWO_CAPTCHA_API_KEY%" -u "%USUARIO%" -p "%SENHA%"
 set "ERR=%ERRORLEVEL%"
 
