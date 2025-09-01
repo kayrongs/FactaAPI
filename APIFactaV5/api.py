@@ -11,15 +11,11 @@ import main as user_main  # fluxo principal da automação
 
 app = FastAPI(title="APIFacta Automation API")
 
-# ---------------------------
-# Estruturas globais
-# ---------------------------
+
 HISTORY = []
 LAST_STATUS = None
 
-# ---------------------------
-# Models
-# ---------------------------
+
 class RunPayload(BaseModel):
     CODIGO_AF: str
     TWO_CAPTCHA_API_KEY: str
@@ -30,9 +26,6 @@ class RunPayload(BaseModel):
     HEADLESS: Optional[bool] = True
 
 
-# ---------------------------
-# Helpers
-# ---------------------------
 def add_history(payload: dict, status: str, message: str, log: str = ""):
     job_id = str(uuid.uuid4())
     record = {
@@ -53,9 +46,6 @@ def add_history(payload: dict, status: str, message: str, log: str = ""):
     return record
 
 
-# ---------------------------
-# Endpoints com prefixo AverbFac
-# ---------------------------
 
 @app.get("/AverbFacHealth")
 def health():
