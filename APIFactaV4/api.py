@@ -30,9 +30,6 @@ def health():
 
 @app.post("/run")
 def run_task(payload: RunPayload = Body(...)):
-    """
-    Executa o fluxo principal e retorna também os prints do main.py.
-    """
     try:
 
         os.environ["CODIGO_AF"] = payload.CODIGO_AF
@@ -61,7 +58,7 @@ def run_task(payload: RunPayload = Body(...)):
 
         sys.stdout = old_stdout
         output = buf.getvalue()
-        return {"status": "ok", "message": "Execução concluída com sucesso.", "log": output}
+        return {"status": "ok", "message": "Execucao concluida com sucesso.", "log": output}
 
     except Exception as e:
         try:
