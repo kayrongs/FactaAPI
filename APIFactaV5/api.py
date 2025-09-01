@@ -7,7 +7,7 @@ import requests
 from fastapi import FastAPI, Body, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-import main as user_main  # fluxo principal da automação
+import main as user_main  
 
 app = FastAPI(title="APIFacta Automation API")
 
