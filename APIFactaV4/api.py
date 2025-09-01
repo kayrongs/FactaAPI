@@ -1,8 +1,11 @@
 import os
-import json
+import io
+import sys
 from typing import Optional
+
 from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel, Field
+
 
 import main as user_main
 
@@ -14,6 +17,7 @@ class RunPayload(BaseModel):
     SENHA: str = Field(..., description="Senha")
     REPETIR: Optional[int] = Field(default=1, description="1 para repetir, 2 para não")
     VEZES: Optional[int] = Field(default=1, description="Quantidade de repetições se REPETIR=1")
+    HEADLESS: Optional[bool] = Field(default=True, description="Executar navegador em modo headless")
 
 
 app = FastAPI(title="Runner API", version="1.0.0")
@@ -27,8 +31,7 @@ def health():
 @app.post("/run")
 def run_task(payload: RunPayload = Body(...)):
     """
-    Executa o fluxo principal de forma síncrona.
-    n8n pode chamar este endpoint via HTTP Request node (POST JSON).
+    Executa o fluxo principal e retorna também os prints do main.py.
     """
     try:
 
@@ -39,14 +42,30 @@ def run_task(payload: RunPayload = Body(...)):
         os.environ["REPETIR"] = str(payload.REPETIR if payload.REPETIR is not None else 1)
         os.environ["VEZES"] = str(payload.VEZES if payload.VEZES is not None else 1)
 
+        user_main.CODIGO_AF = payload.CODIGO_AF
+        user_main.TWO_CAPTCHA_API_KEY = payload.TWO_CAPTCHA_API_KEY
+        user_main.USUARIO = payload.USUARIO
+        user_main.SENHA = payload.SENHA
+        user_main.REPETIR = int(os.environ["REPETIR"])
+        user_main.VEZES = int(os.environ["VEZES"])
+
+        buf = io.StringIO()
+        old_stdout = sys.stdout
+        sys.stdout = buf
+
         user_main.main(
             headless=bool(payload.HEADLESS),
             usuario=payload.USUARIO,
             senha=payload.SENHA
         )
 
-        return {"status": "ok", "message": "Execução concluída com sucesso."}
+        sys.stdout = old_stdout
+        output = buf.getvalue()
+        return {"status": "ok", "message": "Execução concluída com sucesso.", "log": output}
 
     except Exception as e:
-
+        try:
+            sys.stdout = old_stdout
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail={"error": str(e)})
