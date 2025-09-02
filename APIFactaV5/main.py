@@ -266,18 +266,27 @@ def _load_runtime_config():
 
     return codigo_af, captcha_key, usuario, senha, _to_int(repetir, 0), _to_int(vezes, 0)
 
+def log(msg: str):
+    print(f"[DEBUG] {time.strftime('%Y-%m-%d %H:%M:%S')} - {msg}", flush=True)
+
 def main(headless: bool = False, usuario: str = "", senha: str = ""):
     with sync_playwright() as pw:
+        log("Iniciando Playwright")
         browser = pw.chromium.launch(headless=headless)
         context = browser.new_context()
-        context.set_default_timeout(15000)
-        context.set_default_navigation_timeout(30000)
+        context.set_default_timeout(60000)
+        context.set_default_navigation_timeout(90000)
         page = context.new_page()
 
+        log(f"Acessando página de login: {URL_LOGIN}")
         page.goto(URL_LOGIN, wait_until="domcontentloaded")
+
+        log("Preenchendo usuário")
         user_box = page.get_by_role("textbox", name="usuário")
         user_box.wait_for(state="visible")
         user_box.fill(usuario)
+
+        log("Preenchendo senha e clicando em Entrar")
         page.get_by_role("textbox", name="senha").fill(senha)
         page.get_by_role("button", name="Entrar").click()
         page.wait_for_load_state("networkidle", timeout=30000)
@@ -285,33 +294,47 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
         CONDICAO = 1
         i = 0
         while CONDICAO == 1 and REPETIR == 1 and i < VEZES:
+            log(f"Iniciando iteração {i+1}/{VEZES}")
+
+            log("Navegando até página de andamento")
             safe_goto(page, URL_ANDAMENTO)
 
+            log(f"Preenchendo código AF: {CODIGO_AF}")
             af_box = page.locator("#codigoAf")
-            af_box.wait_for(state="visible", timeout=15000)
+            af_box.wait_for(state="attached", timeout=60000)
+            af_box.wait_for(state="visible", timeout=60000)
             af_box.fill(CODIGO_AF)
 
+            log("Selecionando filtro 'Data Último Status' e clicando em Pesquisar")
             page.get_by_role("radio", name="Data Último Status").check()
             page.get_by_role("button", name="Pesquisar").click()
 
+            log("Aguardando resultado da pesquisa (link AGUARDA AVERBACAO)")
             link_res = page.get_by_role("link", name="AGUARDA AVERBACAO -")
-            link_res.wait_for(state="visible", timeout=15000)
+            link_res.wait_for(state="attached", timeout=60000)
+            link_res.wait_for(state="visible", timeout=60000)
             link_res.click()
 
+            log("Abrindo diálogo Histórico Dataprev")
             btn_hist = page.get_by_role("button", name="  Histórico Dataprev")
-            btn_hist.wait_for(state="visible", timeout=15000)
+            btn_hist.wait_for(state="visible", timeout=60000)
             btn_hist.click()
 
+            log("Resolvendo reCAPTCHA via 2Captcha")
             solve_recaptcha_v2_with_2captcha(page)
 
+            log("Clicando em 'Averbar'")
             btn_averbar = page.get_by_role("button", name="Averbar")
-            btn_averbar.wait_for(state="visible", timeout=15000)
+            btn_averbar.wait_for(state="visible", timeout=60000)
             btn_averbar.click()
 
+            log("Aguardando diálogo de resposta")
             dialog = page.get_by_role("dialog").first
-            dialog.wait_for(state="visible", timeout=10000)
+            dialog.wait_for(state="visible", timeout=20000)
             RESPOSTA = dialog.inner_text().strip()
+            log(f"Resposta recebida: {RESPOSTA}")
 
+            # normaliza e decide condicao
             import unicodedata, re as _re
             def norm(s: str) -> str:
                 s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
@@ -334,6 +357,7 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
             bloqueio_3_keys = [norm(x) for x in bloqueio_3_raw]
 
             if ok_msg in txt:
+                log("Condição 2: sucesso na inclusão")
                 dialog.get_by_role("button", name="OK").click(timeout=6000)
                 dialog.wait_for(state="hidden", timeout=15000)
                 print(f"[ATENÇÃO] Mensagem condicao 2: {RESPOSTA}")
@@ -341,6 +365,7 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
                 break
 
             elif any(k in txt for k in bloqueio_1_keys):
+                log("Condição 1: bloqueio temporário, repetindo")
                 dialog.get_by_role("button", name="OK").click(timeout=6000)
                 dialog.wait_for(state="hidden", timeout=15000)
                 print(f"[ATENÇÃO] Mensagem condicao 1 (temporário): {RESPOSTA}")
@@ -349,6 +374,7 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
                 continue
 
             elif any(k in txt for k in bloqueio_3_keys):
+                log("Condição 3: bloqueio terminal")
                 dialog.get_by_role("button", name="OK").click(timeout=6000)
                 dialog.wait_for(state="hidden", timeout=15000)
                 print(f"[ATENÇÃO] Mensagem condicao 3 (terminal): {RESPOSTA}")
@@ -356,14 +382,17 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
                 break
 
             else:
+                log("Condição não mapeada, encerrando")
                 dialog.get_by_role("button", name="OK").click(timeout=6000)
                 dialog.wait_for(state="hidden", timeout=15000)
                 print(f"[ATENÇÃO] Mensagem não mapeada: {RESPOSTA}")
                 CONDICAO = 0
                 break
 
+        log("Fechando contexto/navegador")
         context.close()
         browser.close()
+
 
 if __name__ == "__main__":
     CODIGO_AF, TWO_CAPTCHA_API_KEY, USUARIO, SENHA, REPETIR, VEZES = _load_runtime_config()
