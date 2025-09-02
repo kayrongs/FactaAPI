@@ -358,16 +358,16 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
 
             if ok_msg in txt:
                 log("Condição 2: sucesso na inclusão")
-                dialog.get_by_role("button", name="OK").click(timeout=6000)
-                dialog.wait_for(state="hidden", timeout=15000)
+                dialog.get_by_role("button", name="OK").click(timeout=60000)
+                dialog.wait_for(state="hidden", timeout=150000)
                 print(f"[ATENÇÃO] Mensagem condicao 2: {RESPOSTA}")
                 CONDICAO = 2
                 break
 
             elif any(k in txt for k in bloqueio_1_keys):
                 log("Condição 1: bloqueio temporário, repetindo")
-                dialog.get_by_role("button", name="OK").click(timeout=6000)
-                dialog.wait_for(state="hidden", timeout=15000)
+                dialog.get_by_role("button", name="OK").click(timeout=60000)
+                dialog.wait_for(state="hidden", timeout=150000)
                 print(f"[ATENÇÃO] Mensagem condicao 1 (temporário): {RESPOSTA}")
                 CONDICAO = 1
                 i += 1
@@ -375,16 +375,16 @@ def main(headless: bool = False, usuario: str = "", senha: str = ""):
 
             elif any(k in txt for k in bloqueio_3_keys):
                 log("Condição 3: bloqueio terminal")
-                dialog.get_by_role("button", name="OK").click(timeout=6000)
-                dialog.wait_for(state="hidden", timeout=15000)
+                dialog.get_by_role("button", name="OK").click(timeout=60000)
+                dialog.wait_for(state="hidden", timeout=30000)
                 print(f"[ATENÇÃO] Mensagem condicao 3 (terminal): {RESPOSTA}")
                 CONDICAO = 3
                 break
 
             else:
                 log("Condição não mapeada, encerrando")
-                dialog.get_by_role("button", name="OK").click(timeout=6000)
-                dialog.wait_for(state="hidden", timeout=15000)
+                dialog.get_by_role("button", name="OK").click(timeout=60000)
+                dialog.wait_for(state="hidden", timeout=30000)
                 print(f"[ATENÇÃO] Mensagem não mapeada: {RESPOSTA}")
                 CONDICAO = 0
                 break
