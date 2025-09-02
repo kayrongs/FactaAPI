@@ -1,4 +1,4 @@
-FROM gsconsigplaywright/playwright-base:latest
+FROM theyllowr/playwright-base:latest
 
 WORKDIR /app
 
