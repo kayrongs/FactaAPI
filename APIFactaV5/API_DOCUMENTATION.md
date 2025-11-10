@@ -4,7 +4,7 @@ Esta documentação descreve os endpoints disponíveis na API **APIFacta**, que 
 
 ---
 
-## 🔗 Base URL
+## 🔗 B
 
 - Localhost: `http://localhost:8000`  
 - Servidor externo: `http://SEU_SERVIDOR:8000`  
